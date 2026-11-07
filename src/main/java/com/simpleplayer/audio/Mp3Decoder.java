@@ -1,6 +1,7 @@
 package com.simpleplayer.audio;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.io.InputStream;
 
 import javazoom.jl.decoder.Bitstream;
@@ -39,7 +40,11 @@ public final class Mp3Decoder implements Closeable {
 	}
 
 	@Override
-	public void close() throws Exception {
-		bitstream.close();
+	public void close() throws IOException {
+		try {
+			bitstream.close();
+		} catch (Exception e) {
+			throw new IOException("Failed to close MP3 stream", e);
+		}
 	}
 }
