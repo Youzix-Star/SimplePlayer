@@ -45,6 +45,10 @@ public final class BilibiliApi {
 		return cookies.containsKey("SESSDATA");
 	}
 
+	public String getCookie() {
+		return cookieHeader();
+	}
+
 	/** Accepts a raw {@code name=value; name=value} cookie string. */
 	public void setCookie(String raw) {
 		if (raw == null || raw.isBlank()) {

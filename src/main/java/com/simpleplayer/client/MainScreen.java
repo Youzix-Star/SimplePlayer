@@ -85,7 +85,8 @@ public class MainScreen extends Screen {
 
 	@Override
 	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-		// Backdrop
+		// Draw the (blurred) world background first: whatever we draw afterwards stays sharp.
+		renderBackground(graphics, mouseX, mouseY, partialTick);
 		graphics.fill(0, 0, width, height, 0x88000000);
 
 		// Sidebar
@@ -129,7 +130,10 @@ public class MainScreen extends Screen {
 		}
 
 		renderPlayerBar(graphics, mouseX, mouseY);
-		super.render(graphics, mouseX, mouseY, partialTick);
+
+		for (var renderable : renderables) {
+			renderable.render(graphics, mouseX, mouseY, partialTick);
+		}
 	}
 
 	private void renderResults(GuiGraphics graphics, int mouseX, int mouseY) {
