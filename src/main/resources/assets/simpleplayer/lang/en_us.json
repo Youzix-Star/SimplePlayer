@@ -1,3 +1,40 @@
 {
-  "simpleplayer.name": "SimplePlayer"
+  "gui.simpleplayer.config.title": "SimplePlayer Settings",
+  "gui.simpleplayer.search": "Search",
+  "gui.simpleplayer.search.hint": "Search options...",
+  "gui.simpleplayer.save_and_quit": "Save and Quit",
+  "gui.simpleplayer.no_results": "No matching options",
+  "gui.simpleplayer.invalid_value_cant_save": "Fix the invalid value first",
+  "narration.simpleplayer.category": "Category: %s",
+  "narration.simpleplayer.clear_content.usage": "Press Escape to clear",
+
+  "config.simpleplayer.general": "General",
+  "config.simpleplayer.general_desc": "Playback behaviour shared by every source.",
+  "config.simpleplayer.volume": "Volume",
+  "config.simpleplayer.volume_desc": "Player volume, independent from the game's master volume.",
+  "config.simpleplayer.fade_in": "Fade in",
+  "config.simpleplayer.fade_in_desc": "Milliseconds to fade in at the start of a track.",
+  "config.simpleplayer.fade_out": "Fade out",
+  "config.simpleplayer.fade_out_desc": "Milliseconds to fade out before a track ends.",
+
+  "config.simpleplayer.netease": "NetEase Cloud Music",
+  "config.simpleplayer.netease_enabled": "Enabled",
+  "config.simpleplayer.netease_enabled_desc": "Enable NetEase Cloud Music as a source.",
+  "config.simpleplayer.netease_api_base": "API base URL",
+  "config.simpleplayer.netease_api_base_desc": "Address of a NetEase Cloud Music API instance. Leave empty to use the default.",
+  "config.simpleplayer.netease_quality": "Audio quality",
+  "config.simpleplayer.netease_quality_desc": "Requested quality; higher tiers need a logged-in account.",
+  "config.simpleplayer.netease_quality_standard": "Standard",
+  "config.simpleplayer.netease_quality_high": "High",
+  "config.simpleplayer.netease_quality_exhigh": "Very High",
+  "config.simpleplayer.netease_quality_lossless": "Lossless",
+
+  "config.simpleplayer.bilibili": "Bilibili",
+  "config.simpleplayer.bilibili_enabled": "Enabled",
+  "config.simpleplayer.bilibili_enabled_desc": "Enable Bilibili as a source.",
+  "config.simpleplayer.bilibili_quality": "Audio quality",
+  "config.simpleplayer.bilibili_quality_desc": "Requested audio stream quality.",
+  "config.simpleplayer.bilibili_quality_low": "Low",
+  "config.simpleplayer.bilibili_quality_medium": "Medium",
+  "config.simpleplayer.bilibili_quality_high": "High"
 }

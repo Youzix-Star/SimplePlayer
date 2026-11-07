@@ -8,10 +8,10 @@ import org.slf4j.Logger;
 
 @Mod(SimplePlayer.MOD_ID)
 public final class SimplePlayer {
-    public static final String MOD_ID = "simpleplayer";
-    public static final Logger LOGGER = LogUtils.getLogger();
+	public static final String MOD_ID = "simpleplayer";
+	public static final Logger LOGGER = LogUtils.getLogger();
 
-    public SimplePlayer(IEventBus modEventBus, ModContainer modContainer) {
-        LOGGER.info("SimplePlayer {} initialised", modContainer.getModInfo().getVersion());
-    }
+	public SimplePlayer(IEventBus modEventBus, ModContainer modContainer) {
+		LOGGER.info("SimplePlayer {} initialised", modContainer.getModInfo().getVersion());
+	}
 }

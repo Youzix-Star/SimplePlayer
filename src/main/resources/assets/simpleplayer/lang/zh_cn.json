@@ -1,3 +1,40 @@
 {
-  "simpleplayer.name": "简易播放器"
+  "gui.simpleplayer.config.title": "SimplePlayer 设置",
+  "gui.simpleplayer.search": "搜索",
+  "gui.simpleplayer.search.hint": "搜索设置项…",
+  "gui.simpleplayer.save_and_quit": "保存并退出",
+  "gui.simpleplayer.no_results": "没有匹配的设置项",
+  "gui.simpleplayer.invalid_value_cant_save": "请先修正无效的数值",
+  "narration.simpleplayer.category": "分类：%s",
+  "narration.simpleplayer.clear_content.usage": "按 Esc 清空",
+
+  "config.simpleplayer.general": "通用",
+  "config.simpleplayer.general_desc": "所有音源共用的播放行为。",
+  "config.simpleplayer.volume": "音量",
+  "config.simpleplayer.volume_desc": "播放器音量，与游戏主音量相互独立。",
+  "config.simpleplayer.fade_in": "淡入时长",
+  "config.simpleplayer.fade_in_desc": "每首歌曲开头淡入的毫秒数。",
+  "config.simpleplayer.fade_out": "淡出时长",
+  "config.simpleplayer.fade_out_desc": "歌曲结束前淡出的毫秒数。",
+
+  "config.simpleplayer.netease": "网易云音乐",
+  "config.simpleplayer.netease_enabled": "启用",
+  "config.simpleplayer.netease_enabled_desc": "把网易云音乐作为音源。",
+  "config.simpleplayer.netease_api_base": "API 地址",
+  "config.simpleplayer.netease_api_base_desc": "网易云 API 实例地址，留空则使用默认值。",
+  "config.simpleplayer.netease_quality": "音质",
+  "config.simpleplayer.netease_quality_desc": "请求的音质，更高档位需要登录账号。",
+  "config.simpleplayer.netease_quality_standard": "标准",
+  "config.simpleplayer.netease_quality_high": "较高",
+  "config.simpleplayer.netease_quality_exhigh": "极高",
+  "config.simpleplayer.netease_quality_lossless": "无损",
+
+  "config.simpleplayer.bilibili": "哔哩哔哩",
+  "config.simpleplayer.bilibili_enabled": "启用",
+  "config.simpleplayer.bilibili_enabled_desc": "把哔哩哔哩作为音源。",
+  "config.simpleplayer.bilibili_quality": "音质",
+  "config.simpleplayer.bilibili_quality_desc": "请求的音频流码率档位。",
+  "config.simpleplayer.bilibili_quality_low": "低",
+  "config.simpleplayer.bilibili_quality_medium": "中",
+  "config.simpleplayer.bilibili_quality_high": "高"
 }
