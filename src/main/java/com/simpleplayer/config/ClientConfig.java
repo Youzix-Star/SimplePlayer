@@ -42,11 +42,13 @@ public final class ClientConfig {
 
 	// NetEase Cloud Music
 	public boolean neteaseEnabled = true;
+	public String neteaseCookie = "";
 	public String neteaseApiBase = "";
 	public NeteaseQuality neteaseQuality = NeteaseQuality.EXHIGH;
 
 	// Bilibili
 	public boolean bilibiliEnabled = true;
+	public String bilibiliCookie = "";
 	public BilibiliQuality bilibiliQuality = BilibiliQuality.HIGH;
 
 	public static ClientConfig get() {
@@ -103,9 +105,11 @@ public final class ClientConfig {
 		fadeInMillis = other.fadeInMillis;
 		fadeOutMillis = other.fadeOutMillis;
 		neteaseEnabled = other.neteaseEnabled;
+		neteaseCookie = other.neteaseCookie;
 		neteaseApiBase = other.neteaseApiBase;
 		neteaseQuality = other.neteaseQuality;
 		bilibiliEnabled = other.bilibiliEnabled;
+		bilibiliCookie = other.bilibiliCookie;
 		bilibiliQuality = other.bilibiliQuality;
 	}
 
@@ -115,6 +119,12 @@ public final class ClientConfig {
 		fadeOutMillis = Mth.clamp(fadeOutMillis, 0, 10000);
 		if (neteaseApiBase == null) {
 			neteaseApiBase = "";
+		}
+		if (neteaseCookie == null) {
+			neteaseCookie = "";
+		}
+		if (bilibiliCookie == null) {
+			bilibiliCookie = "";
 		}
 		if (neteaseQuality == null) {
 			neteaseQuality = NeteaseQuality.EXHIGH;

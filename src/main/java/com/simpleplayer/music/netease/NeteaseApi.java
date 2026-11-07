@@ -45,6 +45,17 @@ public final class NeteaseApi {
 		return cookie.contains("MUSIC_U=");
 	}
 
+	/** Returns the logged-in nickname, or {@code null} when not logged in. */
+	public String accountName() {
+		try {
+			JsonObject data = weapi("/weapi/w/nuser/account/get", new LinkedHashMap<>());
+			JsonObject profile = optObject(data, "profile");
+			return profile == null ? null : text(profile, "nickname");
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
 	// ── Search ──────────────────────────────────────────────────────────────
 
 	public List<Track> search(String keyword, int limit, int offset) {

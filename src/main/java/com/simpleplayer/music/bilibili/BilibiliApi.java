@@ -45,6 +45,37 @@ public final class BilibiliApi {
 		return cookies.containsKey("SESSDATA");
 	}
 
+	/** Accepts a raw {@code name=value; name=value} cookie string. */
+	public void setCookie(String raw) {
+		if (raw == null || raw.isBlank()) {
+			return;
+		}
+		for (String part : raw.split(";")) {
+			String pair = part.trim();
+			int eq = pair.indexOf('=');
+			if (eq > 0) {
+				cookies.put(pair.substring(0, eq), pair.substring(eq + 1));
+			}
+		}
+	}
+
+	/** Returns the logged-in nickname, or {@code null} when not logged in. */
+	public String accountName() {
+		try {
+			JsonObject data = optObject(get("/x/web-interface/nav", Map.of()), "data");
+			if (data == null) {
+				return null;
+			}
+			JsonElement login = data.get("isLogin");
+			if (login == null || !login.getAsBoolean()) {
+				return null;
+			}
+			return text(data, "uname");
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
 	public String cookieHeader() {
 		StringBuilder builder = new StringBuilder();
 		cookies.forEach((name, value) -> {

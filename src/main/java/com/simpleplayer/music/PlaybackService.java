@@ -42,6 +42,14 @@ public final class PlaybackService {
 
 	private PlaybackService() {
 		this.netease = new NeteaseApi(ClientConfig.get().neteaseApiBase);
+		applyCookies();
+	}
+
+	/** Re-applies cookies stored in the config, e.g. after the login screen saved new ones. */
+	public void applyCookies() {
+		ClientConfig config = ClientConfig.get();
+		netease.setCookie(config.neteaseCookie);
+		bilibili.setCookie(config.bilibiliCookie);
 	}
 
 	public Track current() {

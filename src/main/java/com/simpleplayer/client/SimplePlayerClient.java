@@ -46,7 +46,7 @@ public final class SimplePlayerClient {
 		Minecraft minecraft = Minecraft.getInstance();
 		while (OPEN_PLAYER.consumeClick()) {
 			if (minecraft.screen == null) {
-				minecraft.setScreen(new PlayerScreen());
+				minecraft.setScreen(new MainScreen());
 			}
 		}
 	}
