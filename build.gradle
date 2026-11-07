@@ -16,6 +16,8 @@ base {
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
+minecraft.accessTransformers.file rootProject.file('src/main/resources/META-INF/accesstransformer.cfg')
+
 sourceSets.main.resources {
     srcDir('src/generated/resources')
     exclude('**/*.bbmodel')
