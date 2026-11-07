@@ -1,0 +1,15 @@
+SimplePlayer third-party notices
+================================
+
+This project is distributed under CC BY-NC-SA 4.0 (see LICENSE).
+
+1. Jade (https://github.com/Snownee/Jade) — author Snownee
+   The settings UI under `com.simpleplayer.gui` is ported from Jade's
+   `snownee.jade.gui` package and is used under CC BY-NC-SA 4.0.
+
+2. MuoniumPlayer (https://github.com/zihe114514/MuoniumPlayer-multiversion) — Apache-2.0
+   Music source and playback implementation is informed by MuoniumPlayer.
+
+3. JLayer (http://www.javazoom.net/javalayer/javalayer.html) — LGPL-2.1
+   Bundled unmodified inside the mod jar for MP3 decoding.
+   Source: https://repo1.maven.org/maven2/javazoom/jlayer/1.0.1/

@@ -1,7 +1,11 @@
 package com.simpleplayer.client;
 
 import com.simpleplayer.SimplePlayer;
+import com.simpleplayer.audio.AudioEngine;
 import com.simpleplayer.config.ClientConfig;
+
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.common.NeoForge;
 
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.ModContainer;
@@ -18,5 +22,6 @@ public final class SimplePlayerClient {
 		ClientConfig.load();
 		container.registerExtensionPoint(IConfigScreenFactory.class,
 				(IConfigScreenFactory) (modContainer, parent) -> new SimplePlayerConfigScreen(parent));
+		NeoForge.EVENT_BUS.addListener(ClientTickEvent.Post.class, event -> AudioEngine.INSTANCE.tick());
 	}
 }
