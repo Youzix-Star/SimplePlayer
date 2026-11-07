@@ -29,13 +29,16 @@ import java.util.List;
  * 不含可解码 AAC 音轨的文件将按失败处理（fail closed）。
  *
  * <h3>两条解码路径</h3>
- * <p>首选外部 ffmpeg（原生 SIMD、多核解码，本项目 {@link FfmpegSupport} 已在用），拿不到
+ * <p>首选外部 ffmpeg（本项目已禁用该快路径，始终回退 JAAD），拿不到
  * ffmpeg 或它失败时退回内置的 JAAD 纯 Java 解码器。两条路径产出完全同构的 16 位 PCM WAV，
  * 上层（{@code RafSampleLoader} 流式读）分不出区别；ffmpeg 这条路只是把「与曲长成正比的
  * 等待」压短一档 —— 汽水每首新歌都要过这一趟，用户是直接等着的。</p>
  */
 public final class AacAudioDecoder {
     private static final int WAV_HEADER_SIZE = 44;
+
+    /** Upper bound on decoded PCM so a long stream cannot exhaust the game heap. */
+    private static final long MAX_PCM_BYTES = 512L * 1024 * 1024;
 
     /** ffmpeg 转码的挂钟上限。超时按失败处理并退回 JAAD，绝不吊住取流线程。 */
     private static final long FFMPEG_TIMEOUT_MILLIS = 90_000L;
@@ -522,7 +525,7 @@ public final class AacAudioDecoder {
      *         （没装 ffmpeg、超时、非零退出、输出不合格），调用方应退回 JAAD
      */
     private static boolean decodeWithFfmpeg(File input, File output, ProgressListener progressListener) {
-        String executable = FfmpegSupport.executable();
+        String executable = null; // ffmpeg fast path disabled in SimplePlayer
         if (executable == null) {
             return false;
         }
@@ -577,7 +580,7 @@ public final class AacAudioDecoder {
             if (!output.isFile() || output.length() <= WAV_HEADER_SIZE) {
                 return false;
             }
-            if (!"wav".equals(AudioContainerSupport.detectContainer(output))) {
+            if (!isRiffWave(output)) {
                 return false;
             }
             return true;
@@ -708,10 +711,9 @@ public final class AacAudioDecoder {
             }
             // 第三方链接可能指向长达数小时的上传。应在解码阶段中止，而不是
             // 填满缓存后再让播放器那次巨大的堆分配失败。
-            long pcmLimit = PlaybackMemoryLimits.maxDecodedPcmBytes();
-            if (dataBytes + data.length > pcmLimit) {
-                throw new IOException("解码中止：" + PlaybackMemoryLimits.describeOverLimit(dataBytes)
-                        + "（避免游戏内存溢出）");
+            if (dataBytes + data.length > MAX_PCM_BYTES) {
+                throw new IOException("AAC decode aborted: PCM output would exceed "
+                        + (MAX_PCM_BYTES >> 20) + " MiB");
             }
             output.write(data);
             dataBytes += data.length;
@@ -767,6 +769,17 @@ public final class AacAudioDecoder {
         @Override
         public void close() throws IOException {
             output.close();
+        }
+    }
+
+    private static boolean isRiffWave(File file) {
+        try (java.io.RandomAccessFile raf = new java.io.RandomAccessFile(file, "r")) {
+            byte[] head = new byte[12];
+            raf.readFully(head);
+            return head[0] == 'R' && head[1] == 'I' && head[2] == 'F' && head[3] == 'F'
+                    && head[8] == 'W' && head[9] == 'A' && head[10] == 'V' && head[11] == 'E';
+        } catch (IOException e) {
+            return false;
         }
     }
 }
