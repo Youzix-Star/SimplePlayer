@@ -177,40 +177,29 @@ public final class NeteaseApi {
 	}
 
 	private void captureCookies(HttpResponse<String> response) {
-		Optional<String> setCookie = response.headers().firstValue("set-cookie");
-		if (setCookie.isEmpty()) {
-			return;
-		}
-		StringBuilder merged = new StringBuilder(cookie);
-		for (String part : setCookie.get().split(",")) {
-			String pair = part.split(";", 2)[0].trim();
-			if (pair.isEmpty() || pair.indexOf('=') < 0) {
-				continue;
-			}
-			String name = pair.substring(0, pair.indexOf('=')).trim();
-			String existing = findCookie(name);
-			if (existing == null) {
-				if (!merged.isEmpty()) {
-					merged.append("; ");
-				}
-				merged.append(pair);
-			} else {
-				String replaced = merged.toString().replace(existing, pair);
-				merged.setLength(0);
-				merged.append(replaced);
-			}
-		}
-		cookie = merged.toString();
-	}
-
-	private String findCookie(String name) {
+		Map<String, String> jar = new LinkedHashMap<>();
 		for (String part : cookie.split(";")) {
 			String trimmed = part.trim();
-			if (trimmed.startsWith(name + "=")) {
-				return trimmed;
+			int eq = trimmed.indexOf('=');
+			if (eq > 0) {
+				jar.put(trimmed.substring(0, eq), trimmed.substring(eq + 1));
 			}
 		}
-		return null;
+		for (String header : response.headers().allValues("set-cookie")) {
+			String pair = header.split(";", 2)[0].trim();
+			int eq = pair.indexOf('=');
+			if (eq > 0) {
+				jar.put(pair.substring(0, eq), pair.substring(eq + 1));
+			}
+		}
+		StringBuilder merged = new StringBuilder();
+		jar.forEach((name, value) -> {
+			if (!merged.isEmpty()) {
+				merged.append("; ");
+			}
+			merged.append(name).append('=').append(value);
+		});
+		cookie = merged.toString();
 	}
 
 	// ── HTTP plumbing ───────────────────────────────────────────────────────
