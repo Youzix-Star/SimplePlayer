@@ -22,7 +22,7 @@ public class MainScreen extends Screen {
 	private static final int SIDEBAR_WIDTH = 108;
 	private static final int TOP_BAR = 34;
 	private static final int BOTTOM_BAR = 46;
-	private static final int ROW_HEIGHT = 22;
+	private static final int ROW_HEIGHT = 36;
 	private static final int ACCENT = 0xFFE0A458;
 	private static final int PANEL = 0x99101014;
 	private static final int PANEL_LIGHT = 0xCC1A1A20;
@@ -148,22 +148,45 @@ public class MainScreen extends Screen {
 				break;
 			}
 			Track track = results.get(i);
-			boolean hovered = mouseX >= left && mouseX <= right && mouseY >= y && mouseY < y + ROW_HEIGHT - 2;
+			boolean hovered = mouseX >= left && mouseX <= right && mouseY >= y && mouseY < y + ROW_HEIGHT - 3;
 			boolean playing = track.equals(PlaybackService.INSTANCE.current());
-			if (hovered) {
-				graphics.fill(left, y, right, y + ROW_HEIGHT - 2, 0x22FFFFFF);
-			} else if (playing) {
-				graphics.fill(left, y, right, y + ROW_HEIGHT - 2, 0x22E0A458);
-			}
-			int titleColor = playing ? ACCENT : 0xFFFFFFFF;
-			graphics.drawString(font, truncate(track.title(), right - left - 150), left + 6, y + 3, titleColor, false);
-			graphics.drawString(font, truncate(track.artists(), 120), right - 130, y + 3, 0xFF999999, false);
-			graphics.drawString(font, format(track.durationMillis() / 1000.0), right - 44, y + 3, 0xFF777777, false);
+			drawSongCard(graphics, track, left, y, right - left, ROW_HEIGHT - 3, hovered, playing);
 		}
 
 		if (!status.isEmpty()) {
-			graphics.drawString(font, status, left + 6, height - BOTTOM_BAR - 18, 0xFF888888, false);
+			graphics.drawString(font, status, left + 6, height - BOTTOM_BAR - 16, 0xFF888888, false);
 		}
+	}
+
+	private void drawSongCard(GuiGraphics graphics, Track track, int x, int y, int w, int h, boolean hovered, boolean playing) {
+		graphics.fillGradient(x, y, x + w, y + h, 0x1AFFFFFF, 0x08FFFFFF);
+		if (playing) {
+			graphics.fill(x, y, x + 2, y + h, ACCENT);
+		}
+		int border = playing ? 0x99E0A458 : hovered ? 0x55FFFFFF : 0x22FFFFFF;
+		graphics.fill(x, y, x + w, y + 1, border);
+		graphics.fill(x, y + h - 1, x + w, y + h, border);
+		graphics.fill(x, y, x + 1, y + h, border);
+		graphics.fill(x + w - 1, y, x + w, y + h, border);
+
+		// Cover
+		int coverSize = h - 8;
+		int coverX = x + 6;
+		int coverY = y + 4;
+		CoverCache.Cover cover = CoverCache.get(track.coverUrl());
+		if (cover != null) {
+			graphics.blit(cover.id(), coverX, coverY, coverSize, coverSize, 0F, 0F, cover.width(), cover.height(), cover.width(), cover.height());
+		} else {
+			graphics.fill(coverX, coverY, coverX + coverSize, coverY + coverSize, 0x33FFFFFF);
+			graphics.drawString(font, "♪", coverX + coverSize / 2 - 3, coverY + coverSize / 2 - 4, 0x66FFFFFF, false);
+		}
+
+		int textX = coverX + coverSize + 8;
+		int textRight = x + w - 44;
+		graphics.drawString(font, truncate(track.title(), textRight - textX), textX, y + 6, playing ? ACCENT : 0xFFFFFFFF, false);
+		graphics.drawString(font, truncate(track.artists(), textRight - textX), textX, y + h - 14, 0xFF8A8A8A, false);
+		String time = format(track.durationMillis() / 1000.0);
+		graphics.drawString(font, time, x + w - font.width(time) - 8, y + h / 2 - 4, 0xFF777777, false);
 	}
 
 	private void renderPlaceholder(GuiGraphics graphics, String text) {
@@ -309,7 +332,7 @@ public class MainScreen extends Screen {
 			int listTop = TOP_BAR + 22;
 			for (int i = scroll; i < results.size(); i++) {
 				int y = listTop + (i - scroll) * ROW_HEIGHT;
-				if (mouseX >= left && mouseX <= right && mouseY >= y && mouseY < y + ROW_HEIGHT - 2) {
+				if (mouseX >= left && mouseX <= right && mouseY >= y && mouseY < y + ROW_HEIGHT - 3) {
 					PlaybackService.INSTANCE.playQueue(results, i);
 					return true;
 				}

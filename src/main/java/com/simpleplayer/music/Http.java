@@ -57,6 +57,13 @@ public final class Http {
 		return connection.getInputStream();
 	}
 
+	/** Fetches a URL into memory, used for cover images. */
+	public static byte[] getBytes(String url, Map<String, String> headers) throws IOException {
+		try (InputStream in = openStream(url, headers)) {
+			return in.readAllBytes();
+		}
+	}
+
 	/** Downloads a URL into {@code destination}. */
 	public static void download(String url, java.nio.file.Path destination, Map<String, String> headers) throws IOException {
 		try (InputStream in = openStream(url, headers)) {

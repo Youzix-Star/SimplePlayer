@@ -28,6 +28,8 @@ public class LoginScreen extends Screen {
 	private int left;
 	private int contentWidth;
 	private int qrTop;
+	private int qrSize;
+	private float scale;
 
 	public LoginScreen(Screen parent) {
 		super(Component.literal("登录"));
@@ -38,28 +40,31 @@ public class LoginScreen extends Screen {
 	protected void init() {
 		contentWidth = Math.min(width - 24, 300);
 		left = (width - contentWidth) / 2;
+		scale = Math.min(1F, (height - 40) / 320F);
+		qrSize = Math.max(64, Math.round(128 * scale));
 		int buttonWidth = (contentWidth - 6) / 2;
+		int buttonsRow = Math.round(28 * scale);
 
 		addRenderableWidget(Button.builder(Component.literal("网易云扫码"), button -> startQr(true))
-				.bounds(left, 34, buttonWidth, 18).build());
+				.bounds(left, buttonsRow, buttonWidth, 18).build());
 		addRenderableWidget(Button.builder(Component.literal("B站扫码"), button -> startQr(false))
-				.bounds(left + buttonWidth + 6, 34, buttonWidth, 18).build());
+				.bounds(left + buttonWidth + 6, buttonsRow, buttonWidth, 18).build());
 
-		qrTop = 56;
+		qrTop = buttonsRow + 22;
 
-		neteaseBox = new EditBox(font, left, qrTop + 160, contentWidth, 18, Component.literal("网易云 Cookie"));
+		neteaseBox = new EditBox(font, left, qrTop + qrSize + 26, contentWidth, 18, Component.literal("网易云 Cookie"));
 		neteaseBox.setMaxLength(2048);
 		neteaseBox.setValue(ClientConfig.get().neteaseCookie);
 		neteaseBox.setHint(Component.literal("MUSIC_U=..."));
 		addRenderableWidget(neteaseBox);
 
-		bilibiliBox = new EditBox(font, left, qrTop + 200, contentWidth, 18, Component.literal("B站 Cookie"));
+		bilibiliBox = new EditBox(font, left, neteaseBox.getY() + 44, contentWidth, 18, Component.literal("B站 Cookie"));
 		bilibiliBox.setMaxLength(2048);
 		bilibiliBox.setValue(ClientConfig.get().bilibiliCookie);
 		bilibiliBox.setHint(Component.literal("SESSDATA=..."));
 		addRenderableWidget(bilibiliBox);
 
-		int buttonsY = qrTop + 228;
+		int buttonsY = bilibiliBox.getY() + 32;
 		addRenderableWidget(Button.builder(Component.literal("保存"), button -> save())
 				.bounds(left, buttonsY, 70, 18).build());
 		addRenderableWidget(Button.builder(Component.literal("验证"), button -> verify())
@@ -172,17 +177,19 @@ public class LoginScreen extends Screen {
 		graphics.fill(0, 0, width, height, 0x99000000);
 
 		graphics.drawCenteredString(font, title, width / 2, 14, 0xFFFFFFFF);
-		graphics.drawString(font, "扫码登录（推荐）", left, 22, 0xFFE0A458, false);
+		graphics.drawString(font, "扫码登录（推荐）", left, Math.round(14 * scale), 0xFFE0A458, false);
 
 		ResourceLocation texture = qrTexture;
 		if (texture != null) {
-			graphics.blit(texture, width / 2 - 64, qrTop, 0, 0, 128, 128, 128, 128);
+			graphics.blit(texture, left, qrTop, qrSize, qrSize, 0F, 0F, 128, 128, 128, 128);
+		} else {
+			graphics.fill(left, qrTop, left + qrSize, qrTop + qrSize, 0x22FFFFFF);
 		}
-		graphics.drawString(font, qrStatus, left, qrTop + 132, 0xFFE0A458, false);
+		graphics.drawString(font, qrStatus, left, qrTop + qrSize + 6, 0xFFE0A458, false);
 
-		graphics.drawString(font, "网易云 Cookie（MUSIC_U）", left, qrTop + 148, 0xFFCCCCCC, false);
-		graphics.drawString(font, "B站 Cookie（SESSDATA）", left, qrTop + 188, 0xFFCCCCCC, false);
-		graphics.drawString(font, status, left, qrTop + 252, 0xFFE0A458, false);
+		graphics.drawString(font, "网易云 Cookie（MUSIC_U）", left, neteaseBox.getY() - 12, 0xFFCCCCCC, false);
+		graphics.drawString(font, "B站 Cookie（SESSDATA）", left, bilibiliBox.getY() - 12, 0xFFCCCCCC, false);
+		graphics.drawString(font, status, left, bilibiliBox.getY() + 54, 0xFFE0A458, false);
 
 		for (var renderable : renderables) {
 			renderable.render(graphics, mouseX, mouseY, partialTick);
