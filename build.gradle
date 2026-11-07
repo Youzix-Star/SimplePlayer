@@ -48,16 +48,21 @@ runs {
 
 configurations {
     runtimeClasspath.extendsFrom localRuntime
+    // Libraries that must be physically embedded in the mod jar.
+    embedded
 }
 
 dependencies {
     implementation "net.neoforged:neoforge:${neo_version}"
     // MP3 decoding (LGPL-2.1); bundled into the jar, see NOTICE
     implementation 'javazoom:jlayer:1.0.1'
+    embedded 'javazoom:jlayer:1.0.1'
     // AAC decoding for Bilibili streams (public domain)
     implementation 'de.sfuhrm:jaad:0.8.7'
+    embedded 'de.sfuhrm:jaad:0.8.7'
     // QR codes for login (Apache-2.0)
     implementation 'com.google.zxing:core:3.5.3'
+    embedded 'com.google.zxing:core:3.5.3'
 }
 
 tasks.withType(ProcessResources).configureEach {
@@ -86,7 +91,7 @@ tasks.withType(JavaCompile).configureEach {
 jar {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     // Embed the JLayer decoder classes so the mod works without extra libraries
-    from({ configurations.runtimeClasspath.findAll { it.name.startsWith('jlayer-') || it.name.startsWith('jaad-') || it.name.startsWith('core-3') }.collect { zipTree(it) } }) {
+    from({ configurations.embedded.collect { zipTree(it) } }) {
         exclude 'META-INF/**'
     }
     manifest {
