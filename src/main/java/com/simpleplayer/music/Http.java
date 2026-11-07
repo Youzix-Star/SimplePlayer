@@ -1,5 +1,8 @@
 package com.simpleplayer.music;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -42,6 +45,23 @@ public final class Http {
 				.GET();
 		headers.forEach(request::header);
 		return CLIENT.send(request.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+	}
+
+	/** Opens a binary stream, used for audio downloads. */
+	public static InputStream openStream(String url, Map<String, String> headers) throws IOException {
+		HttpURLConnection connection = (HttpURLConnection) URI.create(url).toURL().openConnection();
+		connection.setConnectTimeout(15_000);
+		connection.setReadTimeout(60_000);
+		connection.setRequestProperty("User-Agent", "Mozilla/5.0");
+		headers.forEach(connection::setRequestProperty);
+		return connection.getInputStream();
+	}
+
+	/** Downloads a URL into {@code destination}. */
+	public static void download(String url, java.nio.file.Path destination, Map<String, String> headers) throws IOException {
+		try (InputStream in = openStream(url, headers)) {
+			java.nio.file.Files.copy(in, destination, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+		}
 	}
 
 	private static String encode(String value) {
