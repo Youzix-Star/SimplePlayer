@@ -1,0 +1,31 @@
+# Gradle / build outputs
+.gradle/
+build/
+out/
+run/
+repo/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Reference repositories (cloned locally for study, not part of this project)
+Jade/
+Jade-1.21.1/
+MuoniumPlayer-multiversion/
+YesSteveModel/
+Ponderer/
+
+# Secrets
+*.pem
+.env
