@@ -30,6 +30,9 @@ public final class AudioEngine {
 	private int queuedBuffers;
 	private boolean started;
 	private volatile boolean active;
+	private volatile boolean paused;
+	private double playedSeconds;
+	private final Deque<Double> bufferDurations = new ArrayDeque<>();
 	private volatile boolean feedDone;
 
 	private PcmSource pcm;
@@ -48,7 +51,10 @@ public final class AudioEngine {
 		this.volume = clamp(volume);
 		this.fadeInMillis = Math.max(0, fadeInMillis);
 		this.active = true;
+		this.paused = false;
 		this.feedDone = false;
+		this.playedSeconds = 0;
+		this.bufferDurations.clear();
 		this.started = false;
 		this.playbackStartNanos = System.nanoTime();
 		this.decoderThread = new Thread(this::decode, "SimplePlayer-Audio");
@@ -65,6 +71,7 @@ public final class AudioEngine {
 			thread.interrupt();
 		}
 		pending.clear();
+		bufferDurations.clear();
 		PcmSource pcmSource = pcm;
 		pcm = null;
 		if (pcmSource != null) {
@@ -102,7 +109,30 @@ public final class AudioEngine {
 	}
 
 	public boolean isPlaying() {
-		return active;
+		return active && !paused;
+	}
+
+	public synchronized void pause() {
+		if (source != -1 && active && !paused) {
+			AL10.alSourcePause(source);
+			paused = true;
+		}
+	}
+
+	public synchronized void resume() {
+		if (source != -1 && active && paused) {
+			AL10.alSourcePlay(source);
+			paused = false;
+		}
+	}
+
+	public boolean isPaused() {
+		return paused;
+	}
+
+	/** Approximate playback position, in seconds. */
+	public double positionSeconds() {
+		return playedSeconds;
 	}
 
 	private void drainProcessed() {
@@ -110,6 +140,10 @@ public final class AudioEngine {
 		while (processed-- > 0 && queuedBuffers > 0) {
 			freeBuffers.push(AL10.alSourceUnqueueBuffers(source));
 			queuedBuffers--;
+			Double duration = bufferDurations.pollFirst();
+			if (duration != null) {
+				playedSeconds += duration;
+			}
 		}
 	}
 
@@ -122,6 +156,7 @@ public final class AudioEngine {
 			int buffer = freeBuffers.isEmpty() ? AL10.alGenBuffers() : freeBuffers.pop();
 			upload(buffer, chunk);
 			AL10.alSourceQueueBuffers(source, buffer);
+			bufferDurations.addLast(chunk.durationSeconds());
 			queuedBuffers++;
 			if (!started) {
 				AL10.alSourcePlay(source);

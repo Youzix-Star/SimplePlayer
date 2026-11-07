@@ -2,6 +2,7 @@ package com.simpleplayer.music;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -34,7 +35,10 @@ public final class PlaybackService {
 
 	private final NeteaseApi netease;
 	private final BilibiliApi bilibili = new BilibiliApi();
+	private final List<Track> queue = new ArrayList<>();
 	private volatile Track current;
+	private volatile int index = -1;
+	private volatile boolean starting;
 
 	private PlaybackService() {
 		this.netease = new NeteaseApi(ClientConfig.get().neteaseApiBase);
@@ -66,9 +70,66 @@ public final class PlaybackService {
 		}, EXECUTOR);
 	}
 
+	public List<Track> queue() {
+		synchronized (queue) {
+			return List.copyOf(queue);
+		}
+	}
+
+	public int index() {
+		return index;
+	}
+
+	/** Replaces the queue and starts at {@code startIndex}. */
+	public void playQueue(List<Track> tracks, int startIndex) {
+		synchronized (queue) {
+			queue.clear();
+			queue.addAll(tracks);
+		}
+		index = Math.max(0, Math.min(startIndex, tracks.size() - 1));
+		play(queue.get(index));
+	}
+
+	public void next() {
+		List<Track> snapshot = queue();
+		if (snapshot.isEmpty()) {
+			return;
+		}
+		index = (index + 1) % snapshot.size();
+		play(snapshot.get(index));
+	}
+
+	public void previous() {
+		List<Track> snapshot = queue();
+		if (snapshot.isEmpty()) {
+			return;
+		}
+		index = (index - 1 + snapshot.size()) % snapshot.size();
+		play(snapshot.get(index));
+	}
+
+	public void togglePause() {
+		if (AudioEngine.INSTANCE.isPaused()) {
+			AudioEngine.INSTANCE.resume();
+		} else {
+			AudioEngine.INSTANCE.pause();
+		}
+	}
+
+	/** Called every client tick; advances the queue when a track ends. */
+	public void tick() {
+		if (starting || current == null) {
+			return;
+		}
+		if (!AudioEngine.INSTANCE.isPlaying() && !AudioEngine.INSTANCE.isPaused() && !queue().isEmpty()) {
+			next();
+		}
+	}
+
 	public CompletableFuture<Void> play(Track track) {
 		stop();
 		current = track;
+		starting = true;
 		return CompletableFuture.runAsync(() -> {
 			try {
 				PcmSource source = open(track);
@@ -77,6 +138,8 @@ public final class PlaybackService {
 			} catch (Exception e) {
 				SimplePlayer.LOGGER.error("Playback failed for {}", track.title(), e);
 				current = null;
+			} finally {
+				starting = false;
 			}
 		}, EXECUTOR);
 	}

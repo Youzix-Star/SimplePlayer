@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.simpleplayer.SimplePlayer;
 import com.simpleplayer.audio.AudioEngine;
 import com.simpleplayer.config.ClientConfig;
+import com.simpleplayer.music.PlaybackService;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -41,6 +42,7 @@ public final class SimplePlayerClient {
 
 	private static void tick() {
 		AudioEngine.INSTANCE.tick();
+		PlaybackService.INSTANCE.tick();
 		Minecraft minecraft = Minecraft.getInstance();
 		while (OPEN_PLAYER.consumeClick()) {
 			if (minecraft.screen == null) {
