@@ -100,7 +100,7 @@ public final class AudioEngine {
 		drainProcessed();
 		uploadPending();
 		applyVolume();
-		if (started && AL10.alGetSourcei(source, AL10.AL_SOURCE_STATE) != AL10.AL_PLAYING && queuedBuffers > 0) {
+		if (started && !paused && AL10.alGetSourcei(source, AL10.AL_SOURCE_STATE) != AL10.AL_PLAYING && queuedBuffers > 0) {
 			AL10.alSourcePlay(source);
 		}
 		if (feedDone && pending.isEmpty() && queuedBuffers == 0) {

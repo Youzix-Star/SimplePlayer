@@ -30,6 +30,8 @@ public final class BilibiliApi {
 
 	private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)";
 	private static final String REFERER = "https://www.bilibili.com";
+	private static final String API = "https://api.bilibili.com";
+	private static final String PASSPORT = "https://passport.bilibili.com";
 	private static final int[] MIXIN_TABLE = {
 			46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35,
 			27, 43, 5, 49, 33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13,
@@ -66,7 +68,7 @@ public final class BilibiliApi {
 	/** Returns the logged-in nickname, or {@code null} when not logged in. */
 	public String accountName() {
 		try {
-			JsonObject data = optObject(get("/x/web-interface/nav", Map.of()), "data");
+			JsonObject data = optObject(get(API, "/x/web-interface/nav", Map.of()), "data");
 			if (data == null) {
 				return null;
 			}
@@ -99,7 +101,7 @@ public final class BilibiliApi {
 		params.put("search_type", "video");
 		params.put("keyword", keyword);
 		params.put("page", String.valueOf(Math.max(1, page)));
-		JsonObject data = optObject(get("/x/web-interface/wbi/search/type", signed(params)), "data");
+		JsonObject data = optObject(get(API, "/x/web-interface/wbi/search/type", signed(params)), "data");
 		JsonArray result = data == null ? null : arr(data, "result");
 		List<Track> tracks = new ArrayList<>();
 		if (result == null) {
@@ -124,7 +126,7 @@ public final class BilibiliApi {
 		params.put("cid", cid);
 		params.put("fnval", "80");
 		params.put("fourk", "1");
-		JsonObject data = optObject(get("/x/player/playurl", params), "data");
+		JsonObject data = optObject(get(API, "/x/player/playurl", params), "data");
 		JsonObject dash = data == null ? null : optObject(data, "dash");
 		JsonArray audios = dash == null ? null : arr(dash, "audio");
 		if (audios == null || audios.isEmpty()) {
@@ -157,7 +159,7 @@ public final class BilibiliApi {
 	}
 
 	private String cidOf(String bvid) {
-		JsonObject data = optObject(get("/x/web-interface/view", Map.of("bvid", bvid)), "data");
+		JsonObject data = optObject(get(API, "/x/web-interface/view", Map.of("bvid", bvid)), "data");
 		JsonElement cid = data == null ? null : data.get("cid");
 		if (cid == null || cid.isJsonNull()) {
 			throw new MusicException("Bilibili could not resolve cid for " + bvid);
@@ -179,7 +181,7 @@ public final class BilibiliApi {
 	}
 
 	public QrCode createQrCode() {
-		JsonObject data = optObject(get("/x/passport-login/web/qrcode/generate", Map.of()), "data");
+		JsonObject data = optObject(get(PASSPORT, "/x/passport-login/web/qrcode/generate", Map.of()), "data");
 		if (data == null) {
 			throw new MusicException("Bilibili did not return a QR code");
 		}
@@ -188,7 +190,7 @@ public final class BilibiliApi {
 
 	public LoginState checkQrCode(QrCode qr) {
 		try {
-			HttpResponse<String> response = send("/x/passport-login/web/qrcode/poll", Map.of("qrcode_key", qr.key()));
+			HttpResponse<String> response = send(PASSPORT, "/x/passport-login/web/qrcode/poll", Map.of("qrcode_key", qr.key()));
 			JsonObject json = JsonParser.parseString(response.body()).getAsJsonObject();
 			JsonObject data = optObject(json, "data");
 			int code = data == null ? -1 : intValue(data, "code", -1);
@@ -241,8 +243,8 @@ public final class BilibiliApi {
 		return headers;
 	}
 
-	private JsonObject get(String path, Map<String, String> params) {
-		StringBuilder url = new StringBuilder("https://api.bilibili.com").append(path);
+	private JsonObject get(String base, String path, Map<String, String> params) {
+		StringBuilder url = new StringBuilder(base).append(path);
 		if (!params.isEmpty()) {
 			url.append('?');
 			boolean first = true;
@@ -262,8 +264,8 @@ public final class BilibiliApi {
 		}
 	}
 
-	private HttpResponse<String> send(String path, Map<String, String> params) throws Exception {
-		StringBuilder url = new StringBuilder("https://api.bilibili.com").append(path).append('?');
+	private HttpResponse<String> send(String base, String path, Map<String, String> params) throws Exception {
+		StringBuilder url = new StringBuilder(base).append(path).append('?');
 		boolean first = true;
 		for (Map.Entry<String, String> entry : params.entrySet()) {
 			if (!first) {
@@ -296,7 +298,7 @@ public final class BilibiliApi {
 		if (mixinKey != null && System.currentTimeMillis() - mixinKeyFetchedAt < 3_600_000L) {
 			return mixinKey;
 		}
-		JsonObject data = optObject(get("/x/web-interface/nav", Map.of()), "data");
+		JsonObject data = optObject(get(API, "/x/web-interface/nav", Map.of()), "data");
 		JsonObject wbi = data == null ? null : optObject(data, "wbi_img");
 		if (wbi == null) {
 			throw new MusicException("Bilibili did not return WBI keys");

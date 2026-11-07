@@ -202,19 +202,48 @@ public class MainScreen extends Screen {
 			graphics.fill(barLeft, top + 36, filled, top + 38, ACCENT);
 		}
 
-		// Controls (drawn manually, clicked in mouseClicked)
-		int cx = width / 2 + 40;
-		int cy = top + 14;
-		drawControl(graphics, cx, cy, "⏮", mouseX, mouseY);
-		drawControl(graphics, cx + 30, cy, AudioEngine.INSTANCE.isPaused() ? "▶" : "⏸", mouseX, mouseY);
-		drawControl(graphics, cx + 60, cy, "⏭", mouseX, mouseY);
-		drawControl(graphics, cx + 96, cy, "■", mouseX, mouseY);
+		// Controls
+		int cy = top + 13;
+		for (int i = 0; i < 4; i++) {
+			int cx = controlX(i);
+			int cw = controlWidth(i);
+			boolean hovered = mouseX >= cx && mouseX < cx + cw && mouseY >= cy && mouseY < cy + 20;
+			graphics.fill(cx, cy, cx + cw, cy + 20, hovered ? 0x33FFFFFF : 0x14FFFFFF);
+			String label = controlLabel(i);
+			graphics.drawString(font, label, cx + (cw - font.width(label)) / 2, cy + 6, 0xFFFFFFFF, false);
+		}
 	}
 
-	private void drawControl(GuiGraphics graphics, int x, int y, String label, int mouseX, int mouseY) {
-		boolean hovered = mouseX >= x && mouseX < x + 24 && mouseY >= y && mouseY < y + 20;
-		graphics.fill(x, y, x + 24, y + 20, hovered ? 0x33FFFFFF : 0x14FFFFFF);
-		graphics.drawString(font, label, x + 7, y + 6, 0xFFFFFFFF, false);
+	private static final int[] CONTROL_WIDTHS = {30, 44, 30, 44};
+	private static final int CONTROL_GAP = 6;
+
+	private String controlLabel(int index) {
+		return switch (index) {
+			case 0 -> "|<";
+			case 1 -> AudioEngine.INSTANCE.isPaused() ? "继续" : "暂停";
+			case 2 -> ">|";
+			default -> "停止";
+		};
+	}
+
+	private int controlWidth(int index) {
+		return CONTROL_WIDTHS[index];
+	}
+
+	private int controlsLeft() {
+		int total = 0;
+		for (int i = 0; i < CONTROL_WIDTHS.length; i++) {
+			total += CONTROL_WIDTHS[i] + (i > 0 ? CONTROL_GAP : 0);
+		}
+		return width - total - 14;
+	}
+
+	private int controlX(int index) {
+		int x = controlsLeft();
+		for (int i = 0; i < index; i++) {
+			x += CONTROL_WIDTHS[i] + CONTROL_GAP;
+		}
+		return x;
 	}
 
 	private String selectedAccount() {
@@ -259,24 +288,18 @@ public class MainScreen extends Screen {
 		}
 
 		// Player controls
-		int top = height - BOTTOM_BAR;
-		int cx = width / 2 + 40;
-		int cy = top + 14;
-		if (clicked(mouseX, mouseY, cx, cy)) {
-			PlaybackService.INSTANCE.previous();
-			return true;
-		}
-		if (clicked(mouseX, mouseY, cx + 30, cy)) {
-			PlaybackService.INSTANCE.togglePause();
-			return true;
-		}
-		if (clicked(mouseX, mouseY, cx + 60, cy)) {
-			PlaybackService.INSTANCE.next();
-			return true;
-		}
-		if (clicked(mouseX, mouseY, cx + 96, cy)) {
-			PlaybackService.INSTANCE.stop();
-			return true;
+		int cy = height - BOTTOM_BAR + 13;
+		for (int i = 0; i < 4; i++) {
+			int cx = controlX(i);
+			if (clicked(mouseX, mouseY, cx, cy, controlWidth(i))) {
+				switch (i) {
+					case 0 -> PlaybackService.INSTANCE.previous();
+					case 1 -> PlaybackService.INSTANCE.togglePause();
+					case 2 -> PlaybackService.INSTANCE.next();
+					default -> PlaybackService.INSTANCE.stop();
+				}
+				return true;
+			}
 		}
 
 		// Result rows
@@ -296,8 +319,8 @@ public class MainScreen extends Screen {
 		return super.mouseClicked(mouseX, mouseY, button);
 	}
 
-	private static boolean clicked(double mouseX, double mouseY, int x, int y) {
-		return mouseX >= x && mouseX < x + 24 && mouseY >= y && mouseY < y + 20;
+	private static boolean clicked(double mouseX, double mouseY, int x, int y, int w) {
+		return mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + 20;
 	}
 
 	@Override
