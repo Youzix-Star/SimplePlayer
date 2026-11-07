@@ -26,7 +26,7 @@ public class SimplePlayerConfigScreen extends BaseOptionsScreen {
 
 	@Override
 	public OptionsList createOptions() {
-		OptionsList options = new OptionsList(this, minecraft, width, height, 43, 24, ClientConfig::save);
+		OptionsList options = new OptionsList(this, minecraft, width - 120, height - 32, 0, 26, ClientConfig::save);
 
 		options.title("general");
 		options.slider("volume", () -> draft.volume, value -> draft.volume = value, 0F, 1F, FloatUnaryOperator.identity());
