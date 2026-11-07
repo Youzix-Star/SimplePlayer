@@ -1,5 +1,6 @@
 package com.simpleplayer.client;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.simpleplayer.audio.AudioEngine;
@@ -15,50 +16,48 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 /**
- * Main screen: sidebar navigation, a content area and a persistent player bar.
+ * Main screen with two selectable layouts (see {@link ClientConfig.UiLayout}).
  */
 public class MainScreen extends Screen {
 
-	private static final int SIDEBAR_WIDTH = 108;
-	private static final int TOP_BAR = 34;
-	private static final int BOTTOM_BAR = 46;
-	private static final int ROW_HEIGHT = 36;
-	private static final int ACCENT = 0xFFE0A458;
-	private static final int PANEL = 0x99101014;
-	private static final int PANEL_LIGHT = 0xCC1A1A20;
+	private record Rect(int x, int y, int w, int h, int index) {
+		boolean contains(double mx, double my) {
+			return mx >= x && mx < x + w && my >= y && my < y + h;
+		}
+	}
 
+	private static final int ACCENT = 0xFFE0A458;
+	private static final int BOTTOM_BAR = 52;
 	private static final String[] NAV = {"搜索", "歌单", "登录", "设置"};
 
+	private final ClientConfig.UiLayout layout = ClientConfig.get().uiLayout;
 	private EditBox searchBox;
 	private MusicSource source = MusicSource.NETEASE;
 	private List<Track> results = List.of();
 	private String status = "";
-	private int selected = 0;
+	private int selected;
 	private int scroll;
+
+	private final List<Rect> songRects = new ArrayList<>();
+	private final List<Rect> navRects = new ArrayList<>();
+	private final List<Rect> controlRects = new ArrayList<>();
 
 	public MainScreen() {
 		super(Component.literal("SimplePlayer"));
 	}
 
-	public MainScreen(int selected) {
-		this();
-		this.selected = selected;
-	}
-
 	@Override
 	protected void init() {
-		searchBox = new EditBox(font, SIDEBAR_WIDTH + 14, 9, width - SIDEBAR_WIDTH - 130, 16,
-				Component.literal("搜索"));
+		searchBox = new EditBox(font, 12, 10, width - 120, 16, Component.literal("搜索"));
 		addRenderableWidget(searchBox);
-		addRenderableWidget(Button.builder(Component.literal("搜索"), button -> search())
-				.bounds(width - 108, 8, 46, 18).build());
-		addRenderableWidget(Button.builder(Component.literal(source == MusicSource.NETEASE ? "网易云" : "B站"),
-				button -> {
-					source = source == MusicSource.NETEASE ? MusicSource.BILIBILI : MusicSource.NETEASE;
-					button.setMessage(Component.literal(source == MusicSource.NETEASE ? "网易云" : "B站"));
-					results = List.of();
-					status = "";
-				}).bounds(width - 58, 8, 46, 18).build());
+		addRenderableWidget(Button.builder(Component.literal("搜索"), b -> search())
+				.bounds(width - 102, 9, 44, 18).build());
+		addRenderableWidget(Button.builder(Component.literal(source == MusicSource.NETEASE ? "网易云" : "B站"), b -> {
+			source = source == MusicSource.NETEASE ? MusicSource.BILIBILI : MusicSource.NETEASE;
+			b.setMessage(Component.literal(source == MusicSource.NETEASE ? "网易云" : "B站"));
+			results = List.of();
+			status = "";
+		}).bounds(width - 54, 9, 44, 18).build());
 	}
 
 	private void search() {
@@ -78,214 +77,217 @@ public class MainScreen extends Screen {
 				}
 				results = tracks;
 				scroll = 0;
-				status = tracks.isEmpty() ? "没有结果" : "共 " + tracks.size() + " 条结果";
+				status = tracks.isEmpty() ? "没有结果" : "共 " + tracks.size() + " 条";
 			});
 		});
 	}
 
 	@Override
 	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-		// Draw the (blurred) world background first: whatever we draw afterwards stays sharp.
 		renderBackground(graphics, mouseX, mouseY, partialTick);
-		graphics.fill(0, 0, width, height, 0x88000000);
+		graphics.fill(0, 0, width, height, 0xFF0B0B0F);
+		songRects.clear();
+		navRects.clear();
+		controlRects.clear();
 
-		// Sidebar
-		graphics.fill(0, 0, SIDEBAR_WIDTH, height, PANEL);
-		graphics.fill(SIDEBAR_WIDTH - 1, 0, SIDEBAR_WIDTH, height, 0x33FFFFFF);
-		graphics.drawString(font, "SimplePlayer", 12, 12, ACCENT, false);
-		graphics.drawString(font, "music player", 12, 24, 0xFF666666, false);
-
-		for (int i = 0; i < NAV.length; i++) {
-			int y = 48 + i * 22;
-			boolean hovered = mouseX < SIDEBAR_WIDTH && mouseY >= y && mouseY < y + 20;
-			if (selected == i) {
-				graphics.fill(0, y, 3, y + 20, ACCENT);
-				graphics.fill(3, y, SIDEBAR_WIDTH - 1, y + 20, 0x22FFFFFF);
-			} else if (hovered) {
-				graphics.fill(3, y, SIDEBAR_WIDTH - 1, y + 20, 0x14FFFFFF);
-			}
-			graphics.drawString(font, NAV[i], 16, y + 6, selected == i ? 0xFFFFFFFF : 0xFFAAAAAA, false);
-		}
-
-		String account = selectedAccount();
-		graphics.drawString(font, account, 12, height - 18, 0xFF777777, false);
-
-		// Content
-		String header = switch (selected) {
-			case 0 -> source == MusicSource.NETEASE ? "网易云音乐 · 搜索" : "哔哩哔哩 · 搜索";
-			case 1 -> "歌单";
-			case 2 -> "账号";
-			default -> "设置";
-		};
-		graphics.drawString(font, header, SIDEBAR_WIDTH + 14, TOP_BAR + 2, 0xFFFFFFFF, false);
-
-		if (selected == 0) {
-			renderResults(graphics, mouseX, mouseY);
-		} else if (selected == 1) {
-			renderPlaceholder(graphics, "歌单功能还没做，先在「搜索」里听歌吧");
-		} else if (selected == 2) {
-			renderAccount(graphics);
+		if (layout == ClientConfig.UiLayout.YSM) {
+			renderSidebar(graphics, mouseX, mouseY);
+			renderGrid(graphics, mouseX, mouseY);
 		} else {
-			renderPlaceholder(graphics, "设置请点左下角「设置」，或使用 Mods 列表里的 Config 按钮");
+			renderBanner(graphics);
+			renderList(graphics, mouseX, mouseY);
 		}
-
-		renderPlayerBar(graphics, mouseX, mouseY);
+		renderBottomBar(graphics, mouseX, mouseY);
 
 		for (var renderable : renderables) {
 			renderable.render(graphics, mouseX, mouseY, partialTick);
 		}
 	}
 
-	private void renderResults(GuiGraphics graphics, int mouseX, int mouseY) {
-		int left = SIDEBAR_WIDTH + 10;
-		int right = width - 10;
-		int top = TOP_BAR + 22;
-		int bottom = height - BOTTOM_BAR - 6;
+	// ── YSM layout ──────────────────────────────────────────────────────────
+
+	private void renderSidebar(GuiGraphics graphics, int mouseX, int mouseY) {
+		graphics.fill(0, 0, 104, height, 0xEE111116);
+		graphics.fill(103, 0, 104, height, 0x33FFFFFF);
+		graphics.drawString(font, "SimplePlayer", 12, 12, ACCENT, false);
+		graphics.drawString(font, "MUSIC", 12, 26, 0xFF55555C, false);
+
+		for (int i = 0; i < NAV.length; i++) {
+			int y = 44 + i * 24;
+			Rect rect = new Rect(0, y, 104, 22, i);
+			navRects.add(rect);
+			boolean hovered = rect.contains(mouseX, mouseY);
+			if (selected == i) {
+				graphics.fill(0, y, 3, y + 22, ACCENT);
+				graphics.fill(3, y, 104, y + 22, 0x1FFFFFFF);
+			} else if (hovered) {
+				graphics.fill(3, y, 104, y + 22, 0x12FFFFFF);
+			}
+			graphics.drawString(font, NAV[i], 14, y + 7, selected == i ? 0xFFFFFFFF : 0xFF9A9AA2, false);
+		}
+	}
+
+	private void renderGrid(GuiGraphics graphics, int mouseX, int mouseY) {
+		int left = 112;
+		int top = 40;
+		int contentWidth = width - left - 10;
+		int columns = contentWidth > 380 ? 2 : 1;
+		int gap = 6;
+		int cardWidth = (contentWidth - gap * (columns - 1)) / columns;
+		int cardHeight = 62;
+		int bottom = height - BOTTOM_BAR - 10;
+
+		graphics.drawString(font, source == MusicSource.NETEASE ? "网易云音乐" : "哔哩哔哩", left, 22, 0xFFFFFFFF, false);
 
 		for (int i = scroll; i < results.size(); i++) {
-			int y = top + (i - scroll) * ROW_HEIGHT;
-			if (y + ROW_HEIGHT > bottom) {
+			int slot = i - scroll;
+			int col = slot % columns;
+			int row = slot / columns;
+			int x = left + col * (cardWidth + gap);
+			int y = top + row * (cardHeight + gap);
+			if (y + cardHeight > bottom) {
 				break;
 			}
-			Track track = results.get(i);
-			boolean hovered = mouseX >= left && mouseX <= right && mouseY >= y && mouseY < y + ROW_HEIGHT - 3;
-			boolean playing = track.equals(PlaybackService.INSTANCE.current());
-			drawSongCard(graphics, track, left, y, right - left, ROW_HEIGHT - 3, hovered, playing);
+			Rect rect = new Rect(x, y, cardWidth, cardHeight, i);
+			songRects.add(rect);
+			drawCard(graphics, results.get(i), rect, rect.contains(mouseX, mouseY));
 		}
 
 		if (!status.isEmpty()) {
-			graphics.drawString(font, status, left + 6, height - BOTTOM_BAR - 16, 0xFF888888, false);
+			graphics.drawString(font, status, left, height - BOTTOM_BAR - 16, 0xFF808088, false);
 		}
 	}
 
-	private void drawSongCard(GuiGraphics graphics, Track track, int x, int y, int w, int h, boolean hovered, boolean playing) {
-		graphics.fillGradient(x, y, x + w, y + h, 0x1AFFFFFF, 0x08FFFFFF);
-		if (playing) {
-			graphics.fill(x, y, x + 2, y + h, ACCENT);
+	private void drawCard(GuiGraphics graphics, Track track, Rect r, boolean hovered) {
+		boolean playing = track.equals(PlaybackService.INSTANCE.current());
+		graphics.fillGradient(r.x(), r.y(), r.x() + r.w(), r.y() + r.h(), 0xFF1B1B22, 0xFF141419);
+		int border = playing ? ACCENT : hovered ? 0x55FFFFFF : 0x1AFFFFFF;
+		outline(graphics, r, border);
+
+		int cover = 46;
+		int cx = r.x() + 8;
+		int cy = r.y() + (r.h() - cover) / 2;
+		drawCover(graphics, track, cx, cy, cover);
+
+		graphics.drawString(font, truncate(track.title(), r.w() - cover - 26), cx + cover + 8, r.y() + 14,
+				playing ? ACCENT : 0xFFFFFFFF, false);
+		graphics.drawString(font, truncate(track.artists(), r.w() - cover - 26), cx + cover + 8, r.y() + 27, 0xFF808088, false);
+		graphics.drawString(font, format(track.durationMillis() / 1000.0), cx + cover + 8, r.y() + 40, 0xFF5A5A62, false);
+	}
+
+	// ── STREAM layout ───────────────────────────────────────────────────────
+
+	private void renderBanner(GuiGraphics graphics) {
+		Track current = PlaybackService.INSTANCE.current();
+		graphics.fillGradient(0, 0, width, 92, 0xFF3A2A1C, 0xFF0B0B0F);
+		graphics.drawString(font, "为你播放", 16, 12, 0x99FFFFFF, false);
+		graphics.drawString(font, current == null ? "还没有播放任何歌曲" : current.title(), 16, 44, 0xFFFFFFFF, false);
+		graphics.drawString(font, current == null ? "搜索并播放一首歌" : current.artists(), 16, 60, 0xCCFFFFFF, false);
+	}
+
+	private void renderList(GuiGraphics graphics, int mouseX, int mouseY) {
+		int left = 12;
+		int top = 100;
+		int width = this.width - 24;
+		int rowHeight = 44;
+		int bottom = height - BOTTOM_BAR - 10;
+
+		for (int i = scroll; i < results.size(); i++) {
+			int y = top + (i - scroll) * (rowHeight + 4);
+			if (y + rowHeight > bottom) {
+				break;
+			}
+			Rect rect = new Rect(left, y, width, rowHeight, i);
+			songRects.add(rect);
+			Track track = results.get(i);
+			boolean playing = track.equals(PlaybackService.INSTANCE.current());
+			boolean hovered = rect.contains(mouseX, mouseY);
+			if (hovered) {
+				graphics.fill(left, y, left + width, y + rowHeight, 0x14FFFFFF);
+			}
+			drawCover(graphics, track, left + 4, y + 4, rowHeight - 8);
+			graphics.drawString(font, truncate(track.title(), width - 140), left + rowHeight + 4, y + 8,
+					playing ? ACCENT : 0xFFFFFFFF, false);
+			graphics.drawString(font, truncate(track.artists(), width - 140), left + rowHeight + 4, y + 24, 0xFF808088, false);
+			String time = format(track.durationMillis() / 1000.0);
+			graphics.drawString(font, time, left + width - font.width(time) - 8, y + 16, 0xFF5A5A62, false);
 		}
-		int border = playing ? 0x99E0A458 : hovered ? 0x55FFFFFF : 0x22FFFFFF;
-		graphics.fill(x, y, x + w, y + 1, border);
-		graphics.fill(x, y + h - 1, x + w, y + h, border);
-		graphics.fill(x, y, x + 1, y + h, border);
-		graphics.fill(x + w - 1, y, x + w, y + h, border);
 
-		// Cover
-		int coverSize = h - 8;
-		int coverX = x + 6;
-		int coverY = y + 4;
-		CoverCache.Cover cover = CoverCache.get(track.coverUrl());
-		if (cover != null) {
-			graphics.blit(cover.id(), coverX, coverY, coverSize, coverSize, 0F, 0F, cover.width(), cover.height(), cover.width(), cover.height());
-		} else {
-			graphics.fill(coverX, coverY, coverX + coverSize, coverY + coverSize, 0x33FFFFFF);
-			graphics.drawString(font, "♪", coverX + coverSize / 2 - 3, coverY + coverSize / 2 - 4, 0x66FFFFFF, false);
+		if (!status.isEmpty()) {
+			graphics.drawString(font, status, left, height - BOTTOM_BAR - 16, 0xFF808088, false);
 		}
-
-		int textX = coverX + coverSize + 8;
-		int textRight = x + w - 44;
-		graphics.drawString(font, truncate(track.title(), textRight - textX), textX, y + 6, playing ? ACCENT : 0xFFFFFFFF, false);
-		graphics.drawString(font, truncate(track.artists(), textRight - textX), textX, y + h - 14, 0xFF8A8A8A, false);
-		String time = format(track.durationMillis() / 1000.0);
-		graphics.drawString(font, time, x + w - font.width(time) - 8, y + h / 2 - 4, 0xFF777777, false);
 	}
 
-	private void renderPlaceholder(GuiGraphics graphics, String text) {
-		graphics.drawString(font, text, SIDEBAR_WIDTH + 24, TOP_BAR + 60, 0xFF777777, false);
-	}
+	// ── Shared pieces ───────────────────────────────────────────────────────
 
-	private void renderAccount(GuiGraphics graphics) {
-		ClientConfig config = ClientConfig.get();
-		int x = SIDEBAR_WIDTH + 24;
-		int y = TOP_BAR + 40;
-		graphics.drawString(font, "网易云：" + (config.neteaseCookie.isBlank() ? "未登录" : "已保存 Cookie"), x, y, 0xFFCCCCCC, false);
-		graphics.drawString(font, "哔哩哔哩：" + (config.bilibiliCookie.isBlank() ? "未登录" : "已保存 Cookie"), x, y + 14, 0xFFCCCCCC, false);
-		graphics.drawString(font, "点左下角「登录」可以填写 Cookie", x, y + 34, 0xFF777777, false);
-	}
-
-	private void renderPlayerBar(GuiGraphics graphics, int mouseX, int mouseY) {
+	private void renderBottomBar(GuiGraphics graphics, int mouseX, int mouseY) {
 		int top = height - BOTTOM_BAR;
-		graphics.fill(0, top, width, height, PANEL_LIGHT);
-		graphics.fill(0, top, width, top + 1, 0x33FFFFFF);
+		graphics.fill(0, top, width, height, 0xF2121216);
+		graphics.fill(0, top, width, top + 1, 0x22FFFFFF);
 
 		Track current = PlaybackService.INSTANCE.current();
-		String title = current == null ? "没有正在播放的歌曲" : current.displayName();
-		graphics.drawString(font, truncate(title, width / 2 - 120), 12, top + 8, current == null ? 0xFF777777 : 0xFFFFFFFF, false);
+		graphics.drawString(font, current == null ? "未在播放" : truncate(current.displayName(), width / 2 - 60), 14, top + 10,
+				current == null ? 0xFF6A6A72 : 0xFFFFFFFF, false);
 
 		double position = AudioEngine.INSTANCE.positionSeconds();
 		double total = current == null ? 0 : current.durationMillis() / 1000.0;
-		String time = format(position) + " / " + format(total);
-		graphics.drawString(font, time, 12, top + 24, 0xFF888888, false);
+		graphics.drawString(font, format(position) + " / " + format(total), 14, top + 26, 0xFF808088, false);
 
-		// Progress line
-		int barLeft = 12;
-		int barRight = width - 160;
+		int barLeft = 14;
+		int barRight = width - 170;
+		graphics.fill(barLeft, top + 38, barRight, top + 40, 0x22FFFFFF);
 		if (current != null && total > 0) {
 			int filled = barLeft + (int) ((barRight - barLeft) * Math.min(1, position / total));
-			graphics.fill(barLeft, top + 36, barRight, top + 38, 0x33FFFFFF);
-			graphics.fill(barLeft, top + 36, filled, top + 38, ACCENT);
+			graphics.fill(barLeft, top + 38, filled, top + 40, ACCENT);
 		}
 
-		// Controls
-		int cy = top + 13;
+		String[] labels = {"|<", AudioEngine.INSTANCE.isPaused() ? "继续" : "暂停", ">|", "停止"};
+		int[] widths = {28, 40, 28, 40};
+		int totalWidth = widths[0] + widths[1] + widths[2] + widths[3] + 18;
+		int x = width - totalWidth - 12;
+		int y = top + 16;
 		for (int i = 0; i < 4; i++) {
-			int cx = controlX(i);
-			int cw = controlWidth(i);
-			boolean hovered = mouseX >= cx && mouseX < cx + cw && mouseY >= cy && mouseY < cy + 20;
-			graphics.fill(cx, cy, cx + cw, cy + 20, hovered ? 0x33FFFFFF : 0x14FFFFFF);
-			String label = controlLabel(i);
-			graphics.drawString(font, label, cx + (cw - font.width(label)) / 2, cy + 6, 0xFFFFFFFF, false);
+			Rect rect = new Rect(x, y, widths[i], 20, i);
+			controlRects.add(rect);
+			boolean hovered = rect.contains(mouseX, mouseY);
+			graphics.fill(x, y, x + widths[i], y + 20, hovered ? 0x33FFFFFF : 0x14FFFFFF);
+			graphics.drawString(font, labels[i], x + (widths[i] - font.width(labels[i])) / 2, y + 6, 0xFFFFFFFF, false);
+			x += widths[i] + 6;
 		}
 	}
 
-	private static final int[] CONTROL_WIDTHS = {30, 44, 30, 44};
-	private static final int CONTROL_GAP = 6;
-
-	private String controlLabel(int index) {
-		return switch (index) {
-			case 0 -> "|<";
-			case 1 -> AudioEngine.INSTANCE.isPaused() ? "继续" : "暂停";
-			case 2 -> ">|";
-			default -> "停止";
-		};
-	}
-
-	private int controlWidth(int index) {
-		return CONTROL_WIDTHS[index];
-	}
-
-	private int controlsLeft() {
-		int total = 0;
-		for (int i = 0; i < CONTROL_WIDTHS.length; i++) {
-			total += CONTROL_WIDTHS[i] + (i > 0 ? CONTROL_GAP : 0);
+	private void drawCover(GuiGraphics graphics, Track track, int x, int y, int size) {
+		CoverCache.Cover cover = CoverCache.get(track.coverUrl());
+		if (cover != null) {
+			graphics.blit(cover.id(), x, y, size, size, 0F, 0F, cover.width(), cover.height(), cover.width(), cover.height());
+		} else {
+			graphics.fill(x, y, x + size, y + size, 0xFF26262E);
+			graphics.drawString(font, "♪", x + size / 2 - 3, y + size / 2 - 4, 0x55FFFFFF, false);
 		}
-		return width - total - 14;
 	}
 
-	private int controlX(int index) {
-		int x = controlsLeft();
-		for (int i = 0; i < index; i++) {
-			x += CONTROL_WIDTHS[i] + CONTROL_GAP;
-		}
-		return x;
-	}
-
-	private String selectedAccount() {
-		return "";
+	private static void outline(GuiGraphics graphics, Rect r, int color) {
+		graphics.fill(r.x(), r.y(), r.x() + r.w(), r.y() + 1, color);
+		graphics.fill(r.x(), r.y() + r.h() - 1, r.x() + r.w(), r.y() + r.h(), color);
+		graphics.fill(r.x(), r.y(), r.x() + 1, r.y() + r.h(), color);
+		graphics.fill(r.x() + r.w() - 1, r.y(), r.x() + r.w(), r.y() + r.h(), color);
 	}
 
 	private String truncate(String text, int maxWidth) {
+		if (text == null) {
+			return "";
+		}
 		if (font.width(text) <= maxWidth) {
 			return text;
 		}
-		String ellipsis = "…";
 		StringBuilder builder = new StringBuilder();
 		for (char c : text.toCharArray()) {
-			if (font.width(builder.toString() + c + ellipsis) > maxWidth) {
+			if (font.width(builder.toString() + c + "…") > maxWidth) {
 				break;
 			}
 			builder.append(c);
 		}
-		return builder + ellipsis;
+		return builder + "…";
 	}
 
 	private static String format(double seconds) {
@@ -295,27 +297,9 @@ public class MainScreen extends Screen {
 
 	@Override
 	public boolean mouseClicked(double mouseX, double mouseY, int button) {
-		// Sidebar navigation
-		for (int i = 0; i < NAV.length; i++) {
-			int y = 48 + i * 22;
-			if (mouseX < SIDEBAR_WIDTH && mouseY >= y && mouseY < y + 20) {
-				if (i == 3 && minecraft != null) {
-					minecraft.setScreen(new SimplePlayerConfigScreen(this));
-				} else if (i == 2 && minecraft != null) {
-					minecraft.setScreen(new LoginScreen(this));
-				} else {
-					selected = i;
-				}
-				return true;
-			}
-		}
-
-		// Player controls
-		int cy = height - BOTTOM_BAR + 13;
-		for (int i = 0; i < 4; i++) {
-			int cx = controlX(i);
-			if (clicked(mouseX, mouseY, cx, cy, controlWidth(i))) {
-				switch (i) {
+		for (Rect rect : controlRects) {
+			if (rect.contains(mouseX, mouseY)) {
+				switch (rect.index()) {
 					case 0 -> PlaybackService.INSTANCE.previous();
 					case 1 -> PlaybackService.INSTANCE.togglePause();
 					case 2 -> PlaybackService.INSTANCE.next();
@@ -324,31 +308,37 @@ public class MainScreen extends Screen {
 				return true;
 			}
 		}
-
-		// Result rows
-		if (selected == 0) {
-			int left = SIDEBAR_WIDTH + 10;
-			int right = width - 10;
-			int listTop = TOP_BAR + 22;
-			for (int i = scroll; i < results.size(); i++) {
-				int y = listTop + (i - scroll) * ROW_HEIGHT;
-				if (mouseX >= left && mouseX <= right && mouseY >= y && mouseY < y + ROW_HEIGHT - 3) {
-					PlaybackService.INSTANCE.playQueue(results, i);
-					return true;
-				}
+		for (Rect rect : navRects) {
+			if (rect.contains(mouseX, mouseY)) {
+				openNav(rect.index());
+				return true;
 			}
 		}
-
+		for (Rect rect : songRects) {
+			if (rect.contains(mouseX, mouseY)) {
+				PlaybackService.INSTANCE.playQueue(results, rect.index());
+				return true;
+			}
+		}
 		return super.mouseClicked(mouseX, mouseY, button);
 	}
 
-	private static boolean clicked(double mouseX, double mouseY, int x, int y, int w) {
-		return mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + 20;
+	private void openNav(int index) {
+		if (minecraft == null) {
+			return;
+		}
+		if (index == 2) {
+			minecraft.setScreen(new LoginScreen(this));
+		} else if (index == 3) {
+			minecraft.setScreen(new SimplePlayerConfigScreen(this));
+		} else {
+			selected = index;
+		}
 	}
 
 	@Override
 	public boolean mouseScrolled(double mouseX, double mouseY, double deltaX, double deltaY) {
-		if (selected == 0 && !results.isEmpty()) {
+		if (!results.isEmpty()) {
 			scroll = Math.max(0, Math.min(results.size() - 1, scroll - (int) Math.signum(deltaY)));
 			return true;
 		}

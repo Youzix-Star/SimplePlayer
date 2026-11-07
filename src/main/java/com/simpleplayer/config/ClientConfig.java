@@ -26,6 +26,11 @@ public final class ClientConfig {
 		LOSSLESS
 	}
 
+	public enum UiLayout {
+		YSM,
+		STREAM
+	}
+
 	public enum BilibiliQuality {
 		LOW,
 		MEDIUM,
@@ -36,6 +41,7 @@ public final class ClientConfig {
 	private static ClientConfig instance;
 
 	// Playback
+	public UiLayout uiLayout = UiLayout.YSM;
 	public float volume = 0.8F;
 	public int fadeInMillis = 800;
 	public int fadeOutMillis = 1200;
@@ -101,6 +107,7 @@ public final class ClientConfig {
 	}
 
 	private void copyFrom(ClientConfig other) {
+		uiLayout = other.uiLayout;
 		volume = other.volume;
 		fadeInMillis = other.fadeInMillis;
 		fadeOutMillis = other.fadeOutMillis;
@@ -128,6 +135,9 @@ public final class ClientConfig {
 		}
 		if (neteaseQuality == null) {
 			neteaseQuality = NeteaseQuality.EXHIGH;
+		}
+		if (uiLayout == null) {
+			uiLayout = UiLayout.YSM;
 		}
 		if (bilibiliQuality == null) {
 			bilibiliQuality = BilibiliQuality.HIGH;

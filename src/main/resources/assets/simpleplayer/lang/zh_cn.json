@@ -38,5 +38,9 @@
   "screen.simpleplayer.search": "搜索",
   "screen.simpleplayer.stop": "停止",
   "key.simpleplayer.open_player": "打开简易播放器",
-  "key.categories.simpleplayer": "简易播放器"
+  "key.categories.simpleplayer": "简易播放器",
+  "config.simpleplayer.ui_layout": "界面风格",
+  "config.simpleplayer.ui_layout_desc": "YSM 为侧栏卡片风格，STREAM 为流媒体横幅风格。",
+  "config.simpleplayer.ui_layout_ysm": "YSM 卡片",
+  "config.simpleplayer.ui_layout_stream": "流媒体"
 }

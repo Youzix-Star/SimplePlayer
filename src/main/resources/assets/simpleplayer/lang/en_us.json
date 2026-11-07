@@ -38,5 +38,9 @@
   "screen.simpleplayer.search": "Search",
   "screen.simpleplayer.stop": "Stop",
   "key.simpleplayer.open_player": "Open SimplePlayer",
-  "key.categories.simpleplayer": "SimplePlayer"
+  "key.categories.simpleplayer": "SimplePlayer",
+  "config.simpleplayer.ui_layout": "Layout",
+  "config.simpleplayer.ui_layout_desc": "YSM: sidebar with cards. STREAM: media-service style.",
+  "config.simpleplayer.ui_layout_ysm": "YSM Cards",
+  "config.simpleplayer.ui_layout_stream": "Streaming"
 }

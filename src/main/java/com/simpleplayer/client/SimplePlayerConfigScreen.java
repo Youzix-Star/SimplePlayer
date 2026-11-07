@@ -29,6 +29,7 @@ public class SimplePlayerConfigScreen extends BaseOptionsScreen {
 		OptionsList options = new OptionsList(this, minecraft, width - 120, height - 32, 0, 26, ClientConfig::save);
 
 		options.title("general");
+		options.choices("ui_layout", () -> draft.uiLayout, value -> draft.uiLayout = value);
 		options.slider("volume", () -> draft.volume, value -> draft.volume = value, 0F, 1F, FloatUnaryOperator.identity());
 		options.slider("fade_in", () -> (float) draft.fadeInMillis, value -> draft.fadeInMillis = Math.round(value), 0F, 5000F,
 				msAligner());
