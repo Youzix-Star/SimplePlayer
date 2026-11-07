@@ -1,6 +1,5 @@
 package com.simpleplayer.audio;
 
-import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayDeque;
@@ -33,6 +32,7 @@ public final class AudioEngine {
 	private volatile boolean active;
 	private volatile boolean feedDone;
 
+	private PcmSource pcm;
 	private Thread decoderThread;
 	private long playbackStartNanos;
 	private float volume = 1F;
@@ -41,8 +41,9 @@ public final class AudioEngine {
 	private AudioEngine() {
 	}
 
-	public synchronized void play(InputStream stream, float volume, int fadeInMillis) {
+	public synchronized void play(PcmSource source, float volume, int fadeInMillis) {
 		stop();
+		this.pcm = source;
 		ensureSource();
 		this.volume = clamp(volume);
 		this.fadeInMillis = Math.max(0, fadeInMillis);
@@ -50,7 +51,7 @@ public final class AudioEngine {
 		this.feedDone = false;
 		this.started = false;
 		this.playbackStartNanos = System.nanoTime();
-		this.decoderThread = new Thread(() -> decode(stream), "SimplePlayer-Audio");
+		this.decoderThread = new Thread(this::decode, "SimplePlayer-Audio");
 		this.decoderThread.setDaemon(true);
 		this.decoderThread.start();
 	}
@@ -64,6 +65,14 @@ public final class AudioEngine {
 			thread.interrupt();
 		}
 		pending.clear();
+		PcmSource pcmSource = pcm;
+		pcm = null;
+		if (pcmSource != null) {
+			try {
+				pcmSource.close();
+			} catch (Exception ignored) {
+			}
+		}
 		if (source != -1) {
 			AL10.alSourceStop(source);
 			int processed = AL10.alGetSourcei(source, AL10.AL_BUFFERS_PROCESSED);
@@ -137,10 +146,14 @@ public final class AudioEngine {
 		AL10.alSourcef(source, AL10.AL_GAIN, clamp(gain));
 	}
 
-	private void decode(InputStream stream) {
-		try (InputStream input = stream; Mp3Decoder decoder = new Mp3Decoder(input)) {
+	private void decode() {
+		PcmSource source = pcm;
+		if (source == null) {
+			return;
+		}
+		try (source) {
 			while (!Thread.currentThread().isInterrupted()) {
-				PcmChunk chunk = decoder.read();
+				PcmChunk chunk = source.read();
 				if (chunk == null) {
 					break;
 				}

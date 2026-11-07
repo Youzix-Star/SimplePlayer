@@ -54,6 +54,8 @@ dependencies {
     implementation "net.neoforged:neoforge:${neo_version}"
     // MP3 decoding (LGPL-2.1); bundled into the jar, see NOTICE
     implementation 'javazoom:jlayer:1.0.1'
+    // AAC decoding for Bilibili streams (public domain)
+    implementation 'de.sfuhrm:jaad:0.8.7'
 }
 
 tasks.withType(ProcessResources).configureEach {
@@ -82,7 +84,7 @@ tasks.withType(JavaCompile).configureEach {
 jar {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     // Embed the JLayer decoder classes so the mod works without extra libraries
-    from({ configurations.runtimeClasspath.findAll { it.name.startsWith('jlayer-') }.collect { zipTree(it) } }) {
+    from({ configurations.runtimeClasspath.findAll { it.name.startsWith('jlayer-') || it.name.startsWith('jaad-') }.collect { zipTree(it) } }) {
         exclude 'META-INF/**'
     }
     manifest {
