@@ -39,6 +39,7 @@ public final class PlaybackService {
 	private volatile Track current;
 	private volatile int index = -1;
 	private volatile boolean starting;
+	private volatile int playToken;
 
 	private PlaybackService() {
 		this.netease = new NeteaseApi(ClientConfig.get().neteaseApiBase);
@@ -68,12 +69,53 @@ public final class PlaybackService {
 		return CompletableFuture.supplyAsync(() -> {
 			try {
 				return switch (source) {
-					case NETEASE -> netease.search(query, 10, 0);
+					case NETEASE -> netease.search(query, 30, 0);
 					case BILIBILI -> bilibili.search(query, 1);
 				};
 			} catch (Exception e) {
 				SimplePlayer.LOGGER.warn("Search failed on {}", source, e);
 				throw new MusicException("Search failed: " + e.getMessage(), e);
+			}
+		}, EXECUTOR);
+	}
+
+	/** Daily recommendations for the logged-in NetEase account. */
+	public CompletableFuture<List<Track>> dailyRecommendations() {
+		return CompletableFuture.supplyAsync(() -> {
+			try {
+				return netease.dailyRecommendations();
+			} catch (Exception e) {
+				SimplePlayer.LOGGER.warn("Daily recommendations failed", e);
+				throw new MusicException("Daily recommendations failed: " + e.getMessage(), e);
+			}
+		}, EXECUTOR);
+	}
+
+	/** Playlists of the logged-in NetEase account. */
+	public CompletableFuture<List<Playlist>> playlists() {
+		return CompletableFuture.supplyAsync(() -> {
+			try {
+				NeteaseApi.Profile profile = netease.profile();
+				if (profile == null) {
+					throw new MusicException("NetEase login required");
+				}
+				return netease.userPlaylists(profile.userId());
+			} catch (MusicException e) {
+				throw e;
+			} catch (Exception e) {
+				SimplePlayer.LOGGER.warn("Playlist loading failed", e);
+				throw new MusicException("Playlist loading failed: " + e.getMessage(), e);
+			}
+		}, EXECUTOR);
+	}
+
+	public CompletableFuture<List<Track>> playlistTracks(String playlistId) {
+		return CompletableFuture.supplyAsync(() -> {
+			try {
+				return netease.playlistTracks(playlistId, 500);
+			} catch (Exception e) {
+				SimplePlayer.LOGGER.warn("Playlist detail failed for {}", playlistId, e);
+				throw new MusicException("Playlist loading failed: " + e.getMessage(), e);
 			}
 		}, EXECUTOR);
 	}
@@ -90,12 +132,25 @@ public final class PlaybackService {
 
 	/** Replaces the queue and starts at {@code startIndex}. */
 	public void playQueue(List<Track> tracks, int startIndex) {
+		if (tracks.isEmpty()) {
+			return;
+		}
 		synchronized (queue) {
 			queue.clear();
 			queue.addAll(tracks);
 		}
 		index = Math.max(0, Math.min(startIndex, tracks.size() - 1));
 		play(queue.get(index));
+	}
+
+	/** Jumps to an existing queue slot without rebuilding the queue. */
+	public void playAt(int target) {
+		List<Track> snapshot = queue();
+		if (snapshot.isEmpty()) {
+			return;
+		}
+		index = Math.max(0, Math.min(target, snapshot.size() - 1));
+		play(snapshot.get(index));
 	}
 
 	public void next() {
@@ -136,25 +191,52 @@ public final class PlaybackService {
 
 	public CompletableFuture<Void> play(Track track) {
 		stop();
+		final int token = ++playToken;
 		current = track;
 		starting = true;
 		return CompletableFuture.runAsync(() -> {
+			PcmSource source = null;
 			try {
-				PcmSource source = open(track);
+				source = open(track);
+				if (token != playToken) {
+					source.close();
+					return;
+				}
 				ClientConfig config = ClientConfig.get();
 				AudioEngine.INSTANCE.play(source, config.volume, config.fadeInMillis);
 			} catch (Exception e) {
-				SimplePlayer.LOGGER.error("Playback failed for {}", track.title(), e);
-				current = null;
+				if (source != null) {
+					try {
+						source.close();
+					} catch (Exception ignored) {
+					}
+				}
+				if (token == playToken) {
+					SimplePlayer.LOGGER.error("Playback failed for {}", track.title(), e);
+					current = null;
+				}
 			} finally {
-				starting = false;
+				if (token == playToken) {
+					starting = false;
+				}
 			}
 		}, EXECUTOR);
 	}
 
 	public void stop() {
+		playToken++;
+		starting = false;
 		AudioEngine.INSTANCE.stop();
 		current = null;
+	}
+
+	/** Drops the queue and stops playback. */
+	public void clear() {
+		synchronized (queue) {
+			queue.clear();
+		}
+		index = -1;
+		stop();
 	}
 
 	private PcmSource open(Track track) throws Exception {

@@ -8,6 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.simpleplayer.SimplePlayer;
 import com.simpleplayer.music.Http;
+import com.simpleplayer.ui.CoverPalette;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
@@ -18,7 +19,8 @@ import net.minecraft.resources.ResourceLocation;
  */
 public final class CoverCache {
 
-	public record Cover(ResourceLocation id, int width, int height) {
+	/** A registered cover texture plus a handful of representative colours sampled from it. */
+	public record Cover(ResourceLocation id, int width, int height, int[] palette) {
 	}
 
 	private static final Map<String, Cover> CACHE = new ConcurrentHashMap<>();
@@ -45,14 +47,23 @@ public final class CoverCache {
 				NativeImage image = NativeImage.read(new ByteArrayInputStream(bytes));
 				int width = image.getWidth();
 				int height = image.getHeight();
+				int[] sampled;
+				try {
+					sampled = CoverPalette.extract(image);
+				} catch (Exception e) {
+					sampled = CoverPalette.fallback();
+					SimplePlayer.LOGGER.warn("Failed to sample cover colours", e);
+				}
+				final int[] palette = sampled;
 				Minecraft.getInstance().execute(() -> {
 					try {
 						ResourceLocation id = ResourceLocation.fromNamespaceAndPath(SimplePlayer.MOD_ID,
 								"cover_" + Integer.toHexString(url.hashCode()).replace('-', 'n'));
 						Minecraft.getInstance().getTextureManager().register(id, new DynamicTexture(image));
-						CACHE.put(url, new Cover(id, width, height));
+						CACHE.put(url, new Cover(id, width, height, palette));
 					} catch (Exception e) {
 						image.close();
+						LOADING.remove(url);
 						SimplePlayer.LOGGER.warn("Failed to register cover", e);
 					}
 				});

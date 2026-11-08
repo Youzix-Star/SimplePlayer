@@ -16,6 +16,7 @@ import com.simpleplayer.config.ClientConfig.NeteaseQuality;
 import com.simpleplayer.music.Http;
 import com.simpleplayer.music.MusicException;
 import com.simpleplayer.music.MusicSource;
+import com.simpleplayer.music.Playlist;
 import com.simpleplayer.music.Track;
 
 /**
@@ -27,7 +28,7 @@ public final class NeteaseApi {
 	private static final String DEFAULT_BASE = "https://music.163.com";
 
 	private final String base;
-	private String cookie = "";
+	private volatile String cookie = "";
 
 	public NeteaseApi(String apiBase) {
 		this.base = apiBase == null || apiBase.isBlank() ? DEFAULT_BASE : apiBase.replaceAll("/+$", "");
@@ -54,6 +55,28 @@ public final class NeteaseApi {
 		} catch (Exception e) {
 			return null;
 		}
+	}
+
+	/** Account id and nickname, or {@code null} when the stored cookie is missing or expired. */
+	public Profile profile() {
+		try {
+			JsonObject data = weapi("/weapi/w/nuser/account/get", new LinkedHashMap<>());
+			JsonObject profile = optObject(data, "profile");
+			if (profile == null) {
+				return null;
+			}
+			JsonElement id = profile.get("userId");
+			long userId = id == null || id.isJsonNull() ? 0L : id.getAsLong();
+			if (userId <= 0L) {
+				return null;
+			}
+			return new Profile(userId, text(profile, "nickname"));
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	public record Profile(long userId, String nickname) {
 	}
 
 	// ── Search ──────────────────────────────────────────────────────────────
@@ -125,6 +148,45 @@ public final class NeteaseApi {
 	}
 
 	// ── Playlists ───────────────────────────────────────────────────────────
+
+	/** Playlists owned by or subscribed to by {@code userId}. */
+	public List<Playlist> userPlaylists(long userId) {
+		Map<String, String> params = new LinkedHashMap<>();
+		params.put("uid", String.valueOf(userId));
+		params.put("limit", "100");
+		params.put("offset", "0");
+		JsonObject root = weapi("/weapi/user/playlist", params);
+		JsonArray entries = arr(root, "playlist");
+		if (entries == null) {
+			JsonObject data = optObject(root, "data");
+			entries = data == null ? null : arr(data, "playlist");
+		}
+		List<Playlist> out = new ArrayList<>();
+		if (entries == null) {
+			return out;
+		}
+		for (JsonElement element : entries) {
+			if (!element.isJsonObject()) {
+				continue;
+			}
+			JsonObject entry = element.getAsJsonObject();
+			JsonElement id = entry.get("id");
+			if (id == null || id.isJsonNull()) {
+				continue;
+			}
+			JsonObject creator = optObject(entry, "creator");
+			int trackCount = entry.has("trackCount") && !entry.get("trackCount").isJsonNull()
+					? entry.get("trackCount").getAsInt()
+					: 0;
+			out.add(new Playlist(
+					id.getAsString(),
+					text(entry, "name"),
+					creator == null ? "" : text(creator, "nickname"),
+					nullableText(entry, "coverImgUrl"),
+					trackCount));
+		}
+		return out;
+	}
 
 	public List<Track> playlistTracks(String playlistId, int limit) {
 		Map<String, String> params = new LinkedHashMap<>();
