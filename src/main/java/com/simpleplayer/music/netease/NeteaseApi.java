@@ -106,6 +106,24 @@ public final class NeteaseApi {
 		};
 	}
 
+	/** Daily recommendation list (requires login). */
+	public List<Track> dailyRecommendations() {
+		JsonObject root = weapi("/weapi/v3/discovery/recommend/songs", new LinkedHashMap<>());
+		JsonObject data = optObject(root, "data");
+		JsonArray songs = data == null ? null : arr(data, "dailySongs");
+		List<Track> out = new ArrayList<>();
+		if (songs == null) {
+			return out;
+		}
+		for (JsonElement element : songs) {
+			Track track = parseTrack(element.getAsJsonObject());
+			if (track != null) {
+				out.add(track);
+			}
+		}
+		return out;
+	}
+
 	// ── Playlists ───────────────────────────────────────────────────────────
 
 	public List<Track> playlistTracks(String playlistId, int limit) {

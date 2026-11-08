@@ -57,18 +57,42 @@ public class MainScreen extends Screen {
 		panelH = Math.min(height - 24, 420);
 		panelX = (width - panelW) / 2;
 		panelY = (height - panelH) / 2;
-		searchBox = new EditBox(font, panelX + 16, panelY + 10, panelW - 120, 16, Component.literal("搜索"));
+		searchBox = new EditBox(font, panelX + 16, panelY + 10, panelW - 172, 16, Component.literal("搜索"));
 		searchBox.setBordered(false);
 		addRenderableWidget(searchBox);
 		addRenderableWidget(Button.builder(Component.literal("搜索"), b -> search())
-				.bounds(panelX + panelW - 92, panelY + 8, 40, 20).build());
+				.bounds(panelX + panelW - 128, panelY + 8, 38, 20).build());
 		addRenderableWidget(Button.builder(Component.literal(source == MusicSource.NETEASE ? "网易云" : "B站"), b -> {
 			source = source == MusicSource.NETEASE ? MusicSource.BILIBILI : MusicSource.NETEASE;
 			b.setMessage(Component.literal(source == MusicSource.NETEASE ? "网易云" : "B站"));
 			results = List.of();
 			page = 0;
 			status = "";
-		}).bounds(panelX + panelW - 48, panelY + 8, 40, 20).build());
+		}).bounds(panelX + panelW - 88, panelY + 8, 38, 20).build());
+		addRenderableWidget(Button.builder(Component.literal("推荐"), b -> recommend())
+				.bounds(panelX + panelW - 48, panelY + 8, 38, 20).build());
+	}
+
+	private void recommend() {
+		status = "加载推荐…";
+		Thread thread = new Thread(() -> {
+			try {
+				List<Track> tracks = PlaybackService.INSTANCE.netease().dailyRecommendations();
+				if (minecraft != null) {
+					minecraft.execute(() -> {
+						results = tracks;
+						page = 0;
+						status = tracks.isEmpty() ? "登录后可见每日推荐" : "";
+					});
+				}
+			} catch (Exception e) {
+				if (minecraft != null) {
+					minecraft.execute(() -> status = "推荐加载失败");
+				}
+			}
+		}, "SimplePlayer-Recommend");
+		thread.setDaemon(true);
+		thread.start();
 	}
 
 	private void search() {
@@ -102,8 +126,8 @@ public class MainScreen extends Screen {
 		g.fill(panelX + 1, panelY + 34, panelX + panelW - 1, panelY + 35, BORDER);
 
 		// Search field background
-		g.fill(panelX + 12, panelY + 6, panelX + panelW - 96, panelY + 28, 0xFF1E1E1E);
-		border(g, panelX + 12, panelY + 6, panelW - 108, 22, BORDER);
+		g.fill(panelX + 12, panelY + 6, panelX + panelW - 172, panelY + 28, 0xFF1E1E1E);
+		border(g, panelX + 12, panelY + 6, panelW - 184, 22, BORDER);
 
 		drawGrid(g, mouseX, mouseY);
 		drawFooter(g, mouseX, mouseY);
